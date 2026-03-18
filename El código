@@ -1,0 +1,128 @@
+import tkinter as tk
+from tkinter import PhotoImage
+import os
+import webbrowser
+import pygame
+import sys
+import random
+
+# --- CONFIGURACIÓN ---
+URL_PISTA = "https://raw.githubusercontent.com/roberxd9898/puppy-xd/refs/heads/main/Pista"
+CLAVE_MAESTRA = "fuck nigga pig"
+IMG_FILE = "dog.png" 
+AUDIO_FILE = "DJ PIZDA [ban at 1167 obs 😫].mp3"
+
+intentos_globales = 5
+anim_id = None
+
+def iniciar_audio():
+    try:
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
+        if os.path.exists(AUDIO_FILE):
+            pygame.mixer.music.load(AUDIO_FILE)
+            pygame.mixer.music.play(-1)
+    except:
+        pass
+
+def lanzar_bloqueo():
+    global intentos_globales, anim_id
+    
+    root = tk.Tk()
+    root.attributes('-fullscreen', True)
+    root.configure(bg="black")
+    root.protocol("WM_DELETE_WINDOW", lambda: reiniciar_sistema(root)) 
+
+    canvas = tk.Canvas(root, bg="black", highlightthickness=0)
+    canvas.pack(fill="both", expand=True)
+
+    # --- LÓGICA DE MOVIMIENTO AVANZADA ---
+    try:
+        if os.path.exists(IMG_FILE):
+            img_raw = PhotoImage(file=IMG_FILE)
+            mimi_img = img_raw.subsample(6, 6) 
+            mimi = canvas.create_image(100, 100, image=mimi_img, anchor="nw")
+            canvas.image = mimi_img 
+            
+            w, h = mimi_img.width(), mimi_img.height()
+            # Velocidad inicial aleatoria para que no siempre sea igual
+            vx = random.choice([-15, 15])
+            vy = random.choice([-15, 15])
+            px, py = 100, 100
+            
+            def animar():
+                global anim_id
+                nonlocal px, py, vx, vy
+                try:
+                    if not root.winfo_exists(): return
+                    
+                    aw, ah = root.winfo_width(), root.winfo_height()
+                    
+                    if aw > 1:
+                        px += vx
+                        py += vy
+                        
+                        # Rebote en X + Aceleración pequeña
+                        if px + w >= aw or px <= 0:
+                            vx = -vx * 1.05 # Aumenta 5% la velocidad al chocar
+                            # Limitar velocidad máxima para que no desaparezca
+                            if abs(vx) > 50: vx = 50 if vx > 0 else -50
+                            
+                        # Rebote en Y + Aceleración pequeña
+                        if py + h >= ah or py <= 0:
+                            vy = -vy * 1.05
+                            if abs(vy) > 50: vy = 50 if vy > 0 else -50
+                            
+                        canvas.coords(mimi, px, py)
+                    
+                    # 16ms aprox = 60 FPS
+                    anim_id = root.after(16, animar)
+                except: pass
+
+            anim_id = root.after(500, animar)
+    except: pass
+
+    # --- INTERFAZ ---
+    frame = tk.Frame(root, bg="black", highlightthickness=1, highlightbackground="cyan")
+    frame.place(relx=0.5, rely=0.5, anchor="center")
+
+    tk.Label(frame, text="SISTEMA BLOQUEADO", fg="white", bg="black", font=("Arial", 10, "bold")).pack(pady=5, padx=10)
+    lbl_inf = tk.Label(frame, text=f"intentos: {intentos_globales}", fg="red", bg="black", font=("Arial", 9))
+    lbl_inf.pack(pady=2)
+
+    tk.Button(frame, text="pista", fg="cyan", bg="black", font=("Arial", 8, "underline"), 
+              borderwidth=0, command=lambda: webbrowser.open(URL_PISTA)).pack(pady=5)
+
+    entry = tk.Entry(frame, justify="center", show="*", width=15, font=("Arial", 11), bg="#111", fg="white")
+    entry.pack(pady=10, padx=20)
+    entry.focus_set()
+
+    def reiniciar_sistema(v):
+        global anim_id, intentos_globales
+        if anim_id: v.after_cancel(anim_id)
+        intentos_globales = 5
+        v.destroy()
+        lanzar_bloqueo()
+
+    def validar(e=None):
+        global intentos_globales
+        if entry.get() == CLAVE_MAESTRA:
+            if anim_id: root.after_cancel(anim_id)
+            pygame.mixer.music.stop()
+            root.destroy()
+            sys.exit()
+        else:
+            intentos_globales -= 1
+            if intentos_globales <= 0:
+                reiniciar_sistema(root)
+            else:
+                lbl_inf.config(text=f"intentos: {intentos_globales}")
+                entry.delete(0, tk.END)
+
+    entry.bind("<Return>", validar)
+    root.bind("<FocusOut>", lambda e: reiniciar_sistema(root))
+    root.mainloop()
+
+if __name__ == "__main__":
+    iniciar_audio()
+    lanzar_bloqueo()
